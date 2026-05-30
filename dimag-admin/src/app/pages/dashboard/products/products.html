@@ -1,0 +1,393 @@
+<div class="p-8">
+  <div class="flex items-center justify-between mb-6">
+    <h2 class="text-white text-xl font-semibold">Productos online</h2>
+    <button (click)="openCreate()" class="bg-white text-gray-900 text-sm font-medium px-4 py-2 rounded-xl hover:bg-gray-100 transition-colors">
+      + Nuevo producto
+    </button>
+  </div>
+
+  <!-- Filtro por colección -->
+  <div class="flex gap-2 mb-4 flex-wrap">
+    <button
+      (click)="selectedCollection.set('all')"
+      class="text-sm px-4 py-1.5 rounded-xl border transition-colors"
+      [class]="selectedCollection() === 'all'
+        ? 'bg-white text-gray-900 border-white'
+        : 'bg-gray-900 text-gray-400 border-gray-800 hover:border-gray-600'"
+    >Todas</button>
+    @for (colName of productCollections(); track colName) {
+      <button
+        (click)="selectedCollection.set(colName)"
+        class="text-sm px-4 py-1.5 rounded-xl border transition-colors"
+        [class]="selectedCollection() === colName
+          ? 'bg-white text-gray-900 border-white'
+          : 'bg-gray-900 text-gray-400 border-gray-800 hover:border-gray-600'"
+      >{{ colName }}</button>
+    }
+  </div>
+
+  <!-- Búsqueda por nombre -->
+  <div class="mb-4">
+    <input
+      type="text"
+      placeholder="Buscar por nombre..."
+      [value]="search()"
+      (input)="search.set($any($event.target).value)"
+      class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-gray-600"
+    />
+  </div>
+
+  @if (loading()) {
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-10 text-center">
+      <p class="text-gray-400 text-sm">Cargando productos...</p>
+    </div>
+  } @else if (filtered().length === 0) {
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-10 text-center">
+      <p class="text-gray-500 text-sm">No hay productos aún. Crea el primero.</p>
+    </div>
+  } @else {
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+      @for (product of filtered(); track product.id) {
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden transition-opacity" [class.opacity-50]="!product.active">
+          @if (product.images[0]) {
+            <img [src]="product.images[0]" class="w-full aspect-[2/3] md:aspect-auto md:h-[21rem] object-cover object-top bg-gray-800" />
+          } @else {
+            <div class="w-full aspect-[2/3] md:aspect-auto md:h-[21rem] flex items-center justify-center"
+                 [style.background-color]="product.colors?.[0]?.hex ?? '#1f2937'">
+              @if (!product.colors?.[0]) {
+                <span class="text-gray-600 text-xs">Sin imagen</span>
+              }
+            </div>
+          }
+          <div class="p-4">
+            <div class="flex items-start justify-between gap-2 mb-1">
+              <p class="text-white text-sm font-medium leading-tight">{{ product.name }}</p>
+              <span class="text-xs px-2 py-0.5 rounded-full border shrink-0" [class]="typeBadge(product.type)">
+                {{ typeLabel(product.type) }}
+              </span>
+            </div>
+            <p class="text-gray-500 text-xs mb-3">{{ product.collection }}</p>
+            <div class="flex items-center justify-between mb-3">
+              <p class="text-white font-semibold text-sm">{{ formatPrice(product.price) }}</p>
+              <div class="flex items-center gap-1.5">
+                @if (!product.active) {
+                  <span class="text-xs text-gray-400 bg-gray-700/60 px-2 py-0.5 rounded-full">Oculto</span>
+                }
+                @if (!product.inStock) {
+                  <span class="text-xs text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full">Sin stock</span>
+                }
+                @if (product.featured) {
+                  <span class="text-xs text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded-full">Destacado</span>
+                }
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <button (click)="openEdit(product)" class="flex-1 text-xs text-gray-300 bg-gray-800 hover:bg-gray-700 rounded-xl py-1.5 transition-colors">
+                Editar
+              </button>
+              <button
+                (click)="toggleActive(product)"
+                class="flex-1 text-xs rounded-xl py-1.5 transition-colors"
+                [class]="product.active
+                  ? 'text-gray-400 bg-gray-800 hover:bg-gray-700'
+                  : 'text-green-400 bg-green-500/10 hover:bg-green-500/20'"
+              >
+                {{ product.active ? 'Ocultar' : 'Publicar' }}
+              </button>
+              <button (click)="confirmDelete(product.id)" class="text-xs text-red-400 bg-red-500/10 hover:bg-red-500/20 px-3 rounded-xl py-1.5 transition-colors">
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<!-- Confirmación eliminar -->
+@if (deletingId()) {
+  <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" (click)="cancelDelete()">
+    <div class="bg-gray-950 border border-gray-800 rounded-2xl p-6 w-80" (click)="$event.stopPropagation()">
+      <p class="text-white font-medium mb-2">¿Eliminar producto?</p>
+      <p class="text-gray-400 text-sm mb-4">Esta acción no se puede deshacer.</p>
+      <div class="flex gap-3">
+        <button (click)="cancelDelete()" class="flex-1 text-sm text-gray-300 bg-gray-900 border border-gray-800 rounded-xl py-2 hover:bg-gray-800 transition-colors">Cancelar</button>
+        <button (click)="doDelete(deletingId()!)" class="flex-1 text-sm text-white bg-red-600 rounded-xl py-2 hover:bg-red-700 transition-colors">Eliminar</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Panel formulario -->
+@if (showForm()) {
+  <div class="fixed inset-0 bg-black/60 z-50 flex justify-end" (click)="closeForm()">
+    <div class="bg-gray-950 border-l border-gray-800 w-full max-w-xl h-full overflow-y-auto" (click)="$event.stopPropagation()">
+
+      <div class="p-6 border-b border-gray-800 flex items-center justify-between sticky top-0 bg-gray-950 z-10">
+        <h3 class="text-white font-semibold">{{ editingId() ? 'Editar producto' : 'Nuevo producto' }}</h3>
+        <button (click)="closeForm()" class="text-gray-500 hover:text-white transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-6">
+
+        <!-- Info básica -->
+        <div class="space-y-3">
+          <p class="text-gray-400 text-xs font-medium uppercase tracking-wider">Información básica</p>
+          <input
+            type="text" placeholder="Nombre del producto"
+            [value]="draft().name"
+            (input)="patchDraft({ name: $any($event.target).value })"
+            class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-gray-600"
+          />
+          <div class="grid grid-cols-2 gap-3">
+            <select
+              [value]="draft().collection"
+              (change)="patchDraft({ collection: $any($event.target).value })"
+              class="bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-gray-600"
+            >
+              <option value="" disabled>Colección</option>
+              @for (col of collections(); track col.id) {
+                <option [value]="col.name">{{ col.name }}</option>
+              }
+            </select>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
+              <input
+                type="text" placeholder="0"
+                [value]="priceInput()"
+                (focus)="onPriceFocus()"
+                (blur)="onPriceBlur()"
+                (input)="onPriceInput($any($event.target).value)"
+                class="w-full bg-gray-900 border border-gray-800 rounded-xl pl-7 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-gray-600"
+              />
+            </div>
+          </div>
+          <textarea
+            placeholder="Descripción"
+            rows="3"
+            [value]="draft().description"
+            (input)="patchDraft({ description: $any($event.target).value })"
+            class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 resize-none"
+          ></textarea>
+        </div>
+
+        <!-- Tipo y género -->
+        <div class="space-y-3">
+          <p class="text-gray-400 text-xs font-medium uppercase tracking-wider">Tipo y género</p>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-gray-500 text-xs block mb-1.5">Tipo</label>
+              <select
+                [value]="draft().type"
+                (change)="onTypeChange($any($event.target).value)"
+                class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-gray-600"
+              >
+                <option value="conjunto">Conjunto</option>
+                <option value="top">Blusa</option>
+                <option value="bottom">Pantalón</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-gray-500 text-xs block mb-1.5">Género</label>
+              <select
+                [value]="draft().gender"
+                (change)="onGenderChange($any($event.target).value)"
+                class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-gray-600"
+              >
+                <option value="mujer">Mujer</option>
+                <option value="hombre">Hombre</option>
+                <option value="unisex">Unisex</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tallas -->
+        @if (draft().type === 'conjunto') {
+          <div class="bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 flex items-center justify-between">
+            <div>
+              <p class="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Tallas</p>
+              <p class="text-white text-sm">{{ draft().topSizes.join(' · ') }}</p>
+            </div>
+            <span class="text-gray-600 text-xs">Automático según género</span>
+          </div>
+        }
+
+        @if (draft().type === 'top') {
+          <div>
+            <p class="text-gray-400 text-xs font-medium uppercase tracking-wider mb-3">Tallas (blusa)</p>
+            <div class="flex gap-2 flex-wrap">
+              @for (size of SIZES; track size) {
+                <button
+                  type="button"
+                  (click)="toggleTopSize(size)"
+                  class="w-12 h-9 rounded-xl text-sm font-medium border transition-colors"
+                  [class]="draft().topSizes.includes(size)
+                    ? 'bg-white text-gray-900 border-white'
+                    : 'bg-gray-900 text-gray-400 border-gray-800 hover:border-gray-600'"
+                >{{ size }}</button>
+              }
+            </div>
+          </div>
+        }
+
+        @if (draft().type === 'bottom') {
+          <div>
+            <p class="text-gray-400 text-xs font-medium uppercase tracking-wider mb-3">Tallas (pantalón)</p>
+            <div class="flex gap-2 flex-wrap">
+              @for (size of SIZES; track size) {
+                <button
+                  type="button"
+                  (click)="toggleBottomSize(size)"
+                  class="w-12 h-9 rounded-xl text-sm font-medium border transition-colors"
+                  [class]="draft().bottomSizes.includes(size)
+                    ? 'bg-white text-gray-900 border-white'
+                    : 'bg-gray-900 text-gray-400 border-gray-800 hover:border-gray-600'"
+                >{{ size }}</button>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Imágenes -->
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <p class="text-gray-400 text-xs font-medium uppercase tracking-wider">Imágenes</p>
+            <label class="cursor-pointer">
+              <span class="text-xs text-gray-400 hover:text-white transition-colors">
+                {{ uploadingIndex() === -1 ? 'Subiendo...' : '+ Subir varias' }}
+              </span>
+              <input type="file" accept="image/*" multiple class="hidden"
+                [disabled]="uploadingIndex() !== null"
+                (change)="uploadMultiple($event)" />
+            </label>
+          </div>
+          <div class="space-y-2">
+            @for (img of draft().images; track $index) {
+              <div class="flex items-center gap-2">
+                <!-- Preview -->
+                @if (img) {
+                  <img [src]="img" class="w-12 h-12 rounded-lg object-cover bg-gray-800 shrink-0" />
+                } @else {
+                  <div class="w-12 h-12 rounded-lg bg-gray-800 shrink-0 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                  </div>
+                }
+                <!-- Botón subir -->
+                <label class="flex-1 cursor-pointer">
+                  <div class="bg-gray-900 border border-gray-800 hover:border-gray-600 rounded-xl px-3 py-2 text-sm transition-colors text-center"
+                    [class]="uploadingIndex() === $index ? 'text-gray-500' : 'text-gray-400'">
+                    {{ uploadingIndex() === $index ? 'Subiendo...' : (img ? 'Cambiar imagen' : 'Seleccionar imagen') }}
+                  </div>
+                  <input
+                    type="file" accept="image/*" class="hidden"
+                    [disabled]="uploadingIndex() !== null"
+                    (change)="uploadImage($index, $event)"
+                  />
+                </label>
+                @if (draft().images.length > 1) {
+                  <button type="button" (click)="removeImage($index)" class="text-gray-600 hover:text-red-400 transition-colors shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Colores -->
+        <div>
+          <p class="text-gray-400 text-xs font-medium uppercase tracking-wider mb-3">Colores</p>
+          <div class="space-y-2 mb-3">
+            @for (color of draft().colors; track $index) {
+              <div class="flex items-center gap-3 bg-gray-900 border border-gray-800 rounded-xl px-3 py-2">
+                <div class="w-6 h-6 rounded-full border border-gray-700 shrink-0"
+                     [style.background-color]="color.hex"></div>
+                <span class="text-sm text-white flex-1">{{ color.name }}</span>
+                <span class="text-xs text-gray-500">{{ color.hex }}</span>
+                <button type="button" (click)="removeColor($index)" class="text-gray-600 hover:text-red-400 transition-colors shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+            }
+          </div>
+          <div class="flex gap-2">
+            <div class="w-6 h-6 rounded-full border border-gray-700 shrink-0 self-center"
+                 [style.background-color]="selectedPreset()?.hex ?? 'transparent'"></div>
+            <select
+              [value]="selectedPresetName()"
+              (change)="selectedPresetName.set($any($event.target).value)"
+              class="flex-1 bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-gray-600"
+            >
+              <option value="">Seleccionar color...</option>
+              @for (c of PREDEFINED_COLORS; track c.name) {
+                <option [value]="c.name" [selected]="selectedPresetName() === c.name">{{ c.name }} — {{ c.hex }}</option>
+              }
+            </select>
+            <button type="button" (click)="addColor()"
+              [disabled]="!selectedPreset()"
+              class="bg-white text-gray-900 text-sm font-medium px-4 rounded-xl hover:bg-gray-100 transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed">
+              Agregar
+            </button>
+          </div>
+        </div>
+
+        <!-- Etiquetas -->
+        <div>
+          <p class="text-gray-400 text-xs font-medium uppercase tracking-wider mb-3">Etiquetas</p>
+          <input
+            type="text" placeholder="elegante, anti-fluidos, cómodo (separadas por coma)"
+            [value]="draft().tagInput"
+            (input)="patchDraft({ tagInput: $any($event.target).value })"
+            class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-gray-600"
+          />
+        </div>
+
+        <!-- Opciones -->
+        <div>
+          <p class="text-gray-400 text-xs font-medium uppercase tracking-wider mb-3">Opciones</p>
+          <div class="flex gap-6">
+            <label class="flex items-center gap-2.5 cursor-pointer" (click)="patchDraft({ inStock: !draft().inStock })">
+              <div class="w-10 h-6 rounded-full relative transition-colors" [class]="draft().inStock ? 'bg-green-500' : 'bg-gray-700'">
+                <div class="absolute top-1 w-4 h-4 bg-white rounded-full transition-all" [class]="draft().inStock ? 'left-5' : 'left-1'"></div>
+              </div>
+              <span class="text-sm text-gray-300">En stock</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer" (click)="patchDraft({ featured: !draft().featured })">
+              <div class="w-10 h-6 rounded-full relative transition-colors" [class]="draft().featured ? 'bg-yellow-500' : 'bg-gray-700'">
+                <div class="absolute top-1 w-4 h-4 bg-white rounded-full transition-all" [class]="draft().featured ? 'left-5' : 'left-1'"></div>
+              </div>
+              <span class="text-sm text-gray-300">Destacado</span>
+            </label>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="p-6 border-t border-gray-800 flex gap-3 sticky bottom-0 bg-gray-950">
+        <button (click)="closeForm()" class="flex-1 text-sm text-gray-300 bg-gray-900 border border-gray-800 rounded-xl py-2.5 hover:bg-gray-800 transition-colors">
+          Cancelar
+        </button>
+        <button
+          (click)="save()"
+          [disabled]="!canSave() || saving()"
+          class="flex-1 text-sm font-medium bg-white text-gray-900 rounded-xl py-2.5 hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {{ saving() ? 'Guardando...' : (editingId() ? 'Guardar cambios' : 'Crear producto') }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

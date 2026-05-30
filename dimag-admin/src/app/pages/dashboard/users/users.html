@@ -1,0 +1,121 @@
+<div class="p-8">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h2 class="text-white text-xl font-semibold">Usuarios</h2>
+      <p class="text-gray-500 text-sm mt-0.5">Los vendedores solo pueden registrar ventas físicas</p>
+    </div>
+    <button
+      (click)="showForm.set(!showForm())"
+      class="bg-white text-gray-900 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-gray-100 transition-colors"
+    >
+      + Nuevo vendedor
+    </button>
+  </div>
+
+  <!-- Formulario crear vendedor -->
+  @if (showForm()) {
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-6">
+      <h3 class="text-white font-medium mb-4">Crear vendedor</h3>
+
+      @if (errorMsg()) {
+        <div class="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-xl px-4 py-3 mb-4">
+          {{ errorMsg() }}
+        </div>
+      }
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div class="space-y-1">
+          <label class="text-xs text-gray-400">Usuario</label>
+          <input
+            [(ngModel)]="username"
+            type="text"
+            placeholder="Nombre de usuario"
+            class="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-500 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-gray-500"
+          />
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs text-gray-400">Contraseña</label>
+          <div class="relative">
+            <input
+              [(ngModel)]="password"
+              [type]="showPassword ? 'text' : 'password'"
+              placeholder="Mínimo 6 caracteres"
+              class="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-500 rounded-xl px-4 py-2.5 pr-10 text-sm focus:outline-none focus:border-gray-500"
+            />
+            <button type="button" (click)="showPassword = !showPassword"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 text-xs transition-colors">
+              {{ showPassword ? 'Ocultar' : 'Ver' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex gap-3 justify-end">
+        <button type="button" (click)="showForm.set(false)"
+          class="text-gray-400 text-sm px-4 py-2 hover:text-white transition-colors">
+          Cancelar
+        </button>
+        <button type="button" (click)="create()"
+          class="bg-white text-gray-900 text-sm font-semibold px-5 py-2 rounded-xl hover:bg-gray-100 transition-colors">
+          Crear vendedor
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Admin (fijo) -->
+  <div class="mb-3">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center text-white text-xs font-bold uppercase">
+          A
+        </div>
+        <div>
+          <p class="text-white text-sm font-medium">admin</p>
+          <p class="text-gray-500 text-xs">Tu cuenta</p>
+        </div>
+      </div>
+      <span class="bg-blue-500/15 text-blue-400 text-xs px-2.5 py-1 rounded-full border border-blue-500/20">Admin</span>
+    </div>
+  </div>
+
+  <!-- Vendedores -->
+  @if (vendedores().length === 0) {
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-8 text-center">
+      <p class="text-gray-500 text-sm">No hay vendedores creados aún.</p>
+      <p class="text-gray-600 text-xs mt-1">Los vendedores solo pueden acceder a la sección de ventas físicas.</p>
+    </div>
+  } @else {
+    <div class="space-y-3">
+      @for (user of vendedores(); track user.id) {
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center text-gray-300 text-xs font-bold uppercase">
+              {{ user.username[0] }}
+            </div>
+            <div>
+              <p class="text-white text-sm font-medium">{{ user.username }}</p>
+              <p class="text-gray-500 text-xs">Solo ventas físicas</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="bg-green-500/15 text-green-400 text-xs px-2.5 py-1 rounded-full border border-green-500/20">Vendedor</span>
+
+            @if (deletingId() === user.id) {
+              <div class="flex items-center gap-2">
+                <span class="text-gray-400 text-xs">¿Eliminar?</span>
+                <button (click)="doDelete(user.id)" class="text-red-400 hover:text-red-300 text-xs transition-colors font-medium">Sí</button>
+                <button (click)="cancelDelete()" class="text-gray-500 hover:text-gray-300 text-xs transition-colors">No</button>
+              </div>
+            } @else {
+              <button (click)="confirmDelete(user.id)"
+                class="text-gray-600 hover:text-red-400 text-xs transition-colors">
+                Eliminar
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

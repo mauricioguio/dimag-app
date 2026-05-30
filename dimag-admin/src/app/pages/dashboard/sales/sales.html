@@ -1,0 +1,199 @@
+<div class="p-8">
+
+  <div class="flex items-center justify-between mb-6">
+    <h2 class="text-white text-xl font-semibold">Ventas físicas</h2>
+    <div class="flex items-center gap-2 text-xs text-gray-500">
+      {{ filtered().length }} resultado{{ filtered().length !== 1 ? 's' : '' }}
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="flex flex-wrap gap-2 mb-6">
+    <div class="flex gap-1">
+      @for (t of [['ALL','Todas'],['STOCK','Stock'],['FABRICAR','A fabricar']]; track t[0]) {
+        <button
+          (click)="filterType.set($any(t[0]))"
+          class="text-xs px-3 py-1.5 rounded-xl border transition-colors"
+          [class]="filterType() === t[0]
+            ? 'bg-white text-gray-900 border-white'
+            : 'bg-gray-900 text-gray-400 border-gray-800 hover:border-gray-600'"
+        >{{ t[1] }}</button>
+      }
+    </div>
+    <div class="flex gap-1 flex-wrap">
+      <button
+        (click)="filterStatus.set('ALL')"
+        class="text-xs px-3 py-1.5 rounded-xl border transition-colors"
+        [class]="filterStatus() === 'ALL'
+          ? 'bg-white text-gray-900 border-white'
+          : 'bg-gray-900 text-gray-400 border-gray-800 hover:border-gray-600'"
+      >Todos</button>
+      @for (s of allStatuses; track s) {
+        <button
+          (click)="filterStatus.set(s)"
+          class="text-xs px-3 py-1.5 rounded-xl border transition-colors"
+          [class]="filterStatus() === s
+            ? 'bg-white text-gray-900 border-white'
+            : 'bg-gray-900 text-gray-400 border-gray-800 hover:border-gray-600'"
+        >{{ statusLabel(s) }}</button>
+      }
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-10 text-center">
+      <p class="text-gray-400 text-sm">Cargando ventas...</p>
+    </div>
+  } @else if (filtered().length === 0) {
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-10 text-center">
+      <p class="text-gray-500 text-sm">No hay ventas con esos filtros.</p>
+    </div>
+  } @else {
+    <div class="space-y-3">
+      @for (sale of filtered(); track sale.id) {
+
+        @let badge = urgencyBadge(sale);
+
+        <div
+          class="bg-gray-900 border rounded-2xl overflow-hidden transition-colors"
+          [class]="urgencyBorderClass(sale)"
+        >
+
+          <!-- Fila principal -->
+          <div
+            class="p-5 flex items-center gap-4 cursor-pointer hover:bg-gray-800/30 transition-colors relative"
+            (click)="expandedId.set(expandedId() === sale.id ? null : sale.id)"
+          >
+
+            <!-- Badge de urgencia (esquina superior derecha) -->
+            @if (badge) {
+              <span
+                class="absolute top-3 right-10 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                [class]="badge.cls"
+              >{{ badge.text }}</span>
+            }
+
+            <!-- Info principal -->
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1 flex-wrap">
+                <span class="text-white font-medium text-sm">{{ sale.sede.name }}</span>
+                @if (sale.type === 'FABRICAR') {
+                  <span class="text-xs bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-2 py-0.5 rounded-full">A fabricar</span>
+                  <span class="text-xs text-gray-600 font-mono">Factura N° {{ sale.orderNumber.toString().padStart(4, '0') }}</span>
+                }
+                @if (sale.customerName) {
+                  <span class="text-gray-500 text-xs">· {{ sale.customerName }}</span>
+                }
+              </div>
+              <div class="flex items-center gap-3 flex-wrap">
+                <p class="text-gray-500 text-xs">{{ formatDate(sale.createdAt) }}</p>
+                @if (sale.type === 'FABRICAR' && sale.deliveryDate) {
+                  <p class="text-gray-400 text-xs">
+                    Entrega: <span class="font-medium text-gray-300">{{ formatDateShort(sale.deliveryDate) }}</span>
+                  </p>
+                }
+                <p class="text-gray-600 text-xs">{{ sale.items.length }} producto{{ sale.items.length !== 1 ? 's' : '' }}</p>
+              </div>
+            </div>
+
+            <!-- Total -->
+            <span class="text-white font-semibold text-sm shrink-0">{{ formatPrice(sale.total) }}</span>
+
+            <!-- Estado badge -->
+            <div class="shrink-0">
+              <span class="text-xs border px-2.5 py-1 rounded-full {{ statusClass(sale.status) }}">
+                {{ statusLabel(sale.status) }}
+              </span>
+            </div>
+
+            <!-- Chevron -->
+            <svg class="w-4 h-4 text-gray-600 shrink-0 transition-transform" [class.rotate-180]="expandedId() === sale.id"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </div>
+
+          <!-- Detalle expandido -->
+          @if (expandedId() === sale.id) {
+            <div class="border-t border-gray-800 p-5">
+
+              <!-- Items -->
+              <div class="space-y-3 mb-5">
+                @for (item of sale.items; track item.id) {
+                  <div class="flex items-start justify-between gap-4">
+                    <div class="min-w-0 flex-1">
+                      <p class="text-gray-300 text-sm font-medium">{{ item.productName }}</p>
+                      <p class="text-gray-600 text-xs">
+                        Talla {{ item.size }} × {{ item.quantity }}
+                        @if (sale.type === 'FABRICAR' && item.deliveredQty > 0) {
+                          · <span class="text-green-400">✓ {{ item.deliveredQty }} entregado{{ item.deliveredQty > 1 ? 's' : '' }}</span>
+                          @if (item.quantity - item.deliveredQty > 0) {
+                            · <span class="text-yellow-500">{{ item.quantity - item.deliveredQty }} pendiente{{ item.quantity - item.deliveredQty > 1 ? 's' : '' }}</span>
+                          }
+                        }
+                      </p>
+                      @if (item.note) {
+                        <p class="text-yellow-400/80 text-xs mt-0.5 italic">{{ item.note }}</p>
+                      }
+                    </div>
+                    <p class="text-gray-400 text-sm shrink-0">{{ formatPrice(item.price * item.quantity) }}</p>
+                  </div>
+                }
+                @if (sale.paymentMethod) {
+                  <p class="text-gray-500 text-xs pt-2 border-t border-gray-800">
+                    Pago: <span class="text-gray-300 font-medium">{{ sale.paymentMethod }}</span>
+                  </p>
+                }
+                @if (sale.notes) {
+                  <p class="text-gray-500 text-xs pt-1">{{ sale.notes }}</p>
+                }
+              </div>
+
+              <!-- Pagos / abonos (solo FABRICAR) -->
+              @if (sale.type === 'FABRICAR' && sale.payments.length > 0) {
+                <div class="mb-5 p-3 bg-gray-800/50 rounded-xl space-y-1.5">
+                  <p class="text-xs text-gray-500 uppercase tracking-wider mb-2">Abonos</p>
+                  @for (p of sale.payments; track p.id) {
+                    <div class="flex justify-between items-center text-xs">
+                      <span class="text-gray-500">{{ formatDate(p.createdAt) }}@if (p.note) { · {{ p.note }}}</span>
+                      <span class="text-green-400 font-semibold">{{ formatPrice(p.amount) }}</span>
+                    </div>
+                  }
+                  <div class="border-t border-gray-700 pt-1.5 flex justify-between text-xs font-semibold">
+                    <span class="text-gray-400">Saldo pendiente</span>
+                    @let paid = totalPaid(sale); @let balance = sale.total - paid;
+                    <span [class]="balance > 0 ? 'text-red-400' : 'text-green-400'">
+                      {{ balance > 0 ? formatPrice(balance) : 'Pagado' }}
+                    </span>
+                  </div>
+                </div>
+              }
+
+              <!-- Cambiar estado (solo FABRICAR) -->
+              @if (sale.type === 'FABRICAR') {
+                <div class="flex items-center gap-3">
+                  <p class="text-gray-500 text-xs uppercase tracking-wider shrink-0">Estado</p>
+                  <select
+                    [value]="sale.status"
+                    (change)="updateStatus(sale, $any($event.target).value)"
+                    [disabled]="updatingId() === sale.id"
+                    class="flex-1 rounded-xl px-3 py-2 text-sm font-medium border focus:outline-none transition-colors disabled:opacity-40 cursor-pointer"
+                    [class]="selectClass(sale.status)"
+                  >
+                    @for (s of fabricarStatuses; track s) {
+                      <option [value]="s" class="bg-gray-900 text-white">{{ statusLabel(s) }}</option>
+                    }
+                  </select>
+                  @if (updatingId() === sale.id) {
+                    <span class="text-gray-500 text-xs shrink-0">Guardando...</span>
+                  }
+                </div>
+              }
+
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>
