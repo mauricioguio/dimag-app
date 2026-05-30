@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  price       Float
+  description String?
+  type        String   @default("unit")
+  gender      String   @default("unisex")
+  featured    Boolean  @default(false)
+  inStock     Boolean  @default(true)
+  active      Boolean  @default(true)
+  tags        String[]
+  images      String[]
+  topSizes    String[]
+  bottomSizes String[]
+  colors      Json     @default("[]")
+  collection  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  inventoryItems InventoryItem[]
+  saleItems      SaleItem[]
+}
+
+model Sede {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  pin       String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inventory InventoryItem[]
+  sales     Sale[]
+}
+
+model InventoryItem {
+  id        String   @id @default(cuid())
+  sedeId    String
+  productId String
+  size      String
+  quantity  Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  sede    Sede    @relation(fields: [sedeId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([sedeId, productId, size])
+}
+
+model Sale {
+  id            String    @id @default(cuid())
+  orderNumber   Int       @default(autoincrement())
+  sedeId        String
+  type          SaleType  @default(STOCK)
+  status        String    @default("PENDIENTE")
+  total         Float     @default(0)
+  customerName  String?
+  notes         String?
+  deliveryDate  DateTime?
+  paymentMethod String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sede     Sede          @relation(fields: [sedeId], references: [id])
+  items    SaleItem[]
+  payments SalePayment[]
+}
+
+model SaleItem {
+  id           String  @id @default(cuid())
+  saleId       String
+  productId    String
+  productName  String
+  size         String
+  quantity     Int
+  price        Float
+  note         String?
+  deliveredQty Int     @default(0)
+
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model SalePayment {
+  id        String   @id @default(cuid())
+  saleId    String
+  amount    Float
+  note      String?
+  createdAt DateTime @default(now())
+
+  sale Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+}
+
+enum SaleType {
+  STOCK
+  FABRICAR
+}
