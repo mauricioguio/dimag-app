@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Put, Patch, Param, Body, Headers,
+  Controller, Get, Post, Put, Patch, Delete, Param, Body, Headers,
   CanActivate, ExecutionContext, Injectable, UseGuards, UnauthorizedException,
 } from '@nestjs/common';
 import { SellerService } from './seller.service';
@@ -111,5 +111,11 @@ export class SellerController {
   @UseGuards(JwtAuthGuard)
   updateDeliveredQtyAdmin(@Param('id') id: string, @Body('items') items: { itemId: string; deliveredQty: number }[]) {
     return this.sellerService.updateDeliveredQty(id, items);
+  }
+
+  @Delete('admin/sales/:id')
+  @UseGuards(JwtAuthGuard)
+  deleteSale(@Param('id') id: string) {
+    return this.sellerService.deleteSale(id);
   }
 }

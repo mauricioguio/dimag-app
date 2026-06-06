@@ -34,5 +34,9 @@ export class SellerSalesApiService {
   updateDeliveredQty(saleId: string, items: { itemId: string; deliveredQty: number }[]) {
     return this.http.patch<SellerSale>(`${API_URL}/seller/admin/fabricar/${saleId}/items`, { items });
   }
+
+  delete(saleId: string) {
+    return this.http.delete<void>(`${API_URL}/seller/admin/sales/${saleId}`);
+  }
 }
 

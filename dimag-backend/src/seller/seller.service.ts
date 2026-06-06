@@ -162,4 +162,8 @@ export class SellerService {
       include: { items: true, sede: { select: { id: true, name: true } } },
     });
   }
+
+  deleteSale(id: string) {
+    return this.prisma.sale.delete({ where: { id } });
+  }
 }
